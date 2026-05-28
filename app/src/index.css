@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'SamsungSSHead';
+  src: url('/fonts/SamsungSSHeadKR-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSHead';
+  src: url('/fonts/SamsungSSHeadKR-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSHead';
+  src: url('/fonts/SamsungSSHeadKR-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSHead';
+  src: url('/fonts/SamsungSSHeadKR-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSBody';
+  src: url('/fonts/SamsungSSBodyKR-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSBody';
+  src: url('/fonts/SamsungSSBodyKR-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'SamsungSSBody';
+  src: url('/fonts/SamsungSSBodyKR-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #0f0f0f;
+  color: #ffffff;
+  font-family: 'SamsungSSHead', 'SamsungSSBody', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* React Flow overrides */
+.react-flow__node {
+  font-family: 'SamsungSSHead', 'SamsungSSBody', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #1a1a1a; }
+::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
