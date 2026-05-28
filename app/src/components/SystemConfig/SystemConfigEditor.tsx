@@ -31,7 +31,6 @@ export default function SystemConfigEditor({ zoneId }: Props) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
 
-  // Convert store nodes/edges to React Flow format
   const toRFNodes = (nodes: HardwareNode[]): Node[] =>
     nodes.map((n) => ({
       id: n.id,
@@ -54,7 +53,6 @@ export default function SystemConfigEditor({ zoneId }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState(toRFNodes(zone?.nodes ?? []));
   const [edges, setEdges, onEdgesChange] = useEdgesState(toRFEdges(zone?.edges ?? []));
 
-  // Sync back to store on change
   const syncNodes = useCallback((updatedNodes: Node[]) => {
     const hwNodes: HardwareNode[] = updatedNodes.map((n) => ({
       id: n.id,
@@ -98,15 +96,25 @@ export default function SystemConfigEditor({ zoneId }: Props) {
     });
   }, [selectedCableType, setEdges, syncEdges]);
 
-  const onNodesChangeSync = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
+  // Only sync removes immediately; position changes sync on drag stop
+  const handleNodesChange = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
     onNodesChange(changes);
-    setNodes((nds) => { syncNodes(nds); return nds; });
+    if (changes.some((c) => c.type === 'remove')) {
+      setNodes((nds) => { syncNodes(nds); return nds; });
+    }
   }, [onNodesChange, setNodes, syncNodes]);
 
-  const onEdgesChangeSync = useCallback((changes: Parameters<typeof onEdgesChange>[0]) => {
+  const handleEdgesChange = useCallback((changes: Parameters<typeof onEdgesChange>[0]) => {
     onEdgesChange(changes);
-    setEdges((eds) => { syncEdges(eds); return eds; });
+    if (changes.some((c) => c.type === 'remove')) {
+      setEdges((eds) => { syncEdges(eds); return eds; });
+    }
   }, [onEdgesChange, setEdges, syncEdges]);
+
+  // Sync positions to store only after drag ends (not on every move event)
+  const onNodeDragStop = useCallback(() => {
+    setNodes((nds) => { syncNodes(nds); return nds; });
+  }, [setNodes, syncNodes]);
 
   const addHardwareToCanvas = useCallback((template: HardwareTemplate, pos?: { x: number; y: number }) => {
     const position = pos ?? {
@@ -134,17 +142,15 @@ export default function SystemConfigEditor({ zoneId }: Props) {
     });
   }, [setNodes, syncNodes]);
 
-  // Drop from palette
+  // React Flow v12: screenToFlowPosition takes client coordinates directly (no rect offset)
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     const raw = event.dataTransfer.getData('hardwareTemplate');
-    if (!raw) return;
+    if (!raw || !rfInstance) return;
     const template: HardwareTemplate = JSON.parse(raw);
-    if (!rfInstance || !reactFlowWrapper.current) return;
-    const rect = reactFlowWrapper.current.getBoundingClientRect();
     const pos = rfInstance.screenToFlowPosition({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: event.clientX,
+      y: event.clientY,
     });
     addHardwareToCanvas(template, {
       x: Math.round(pos.x / GRID_SIZE) * GRID_SIZE,
@@ -160,72 +166,66 @@ export default function SystemConfigEditor({ zoneId }: Props) {
   if (!zone) return <div style={{ color: '#555', padding: 40 }}>Zone not found</div>;
 
   return (
-    <div style={{ display: 'flex', height: '100%', gap: 0 }}>
+    <div style={{ display: 'flex', height: '100%' }}>
       {/* Left: Hardware Palette */}
       <div style={{
-        width: 200, flexShrink: 0, padding: 12,
+        width: 200, flexShrink: 0,
         background: '#111', borderRight: '1px solid #222',
-        overflowY: 'auto',
+        overflowY: 'auto', padding: 12,
       }}>
         <HardwarePalette onAddHardware={(t) => addHardwareToCanvas(t)} />
       </div>
 
-      {/* Center: Canvas */}
-      <div style={{ flex: 1, position: 'relative' }} ref={reactFlowWrapper}>
-        {/* Cable type selector */}
-        <CableTypeSelector
-          selected={selectedCableType}
-          onChange={setSelectedCableType}
-        />
+      {/* Center: Cable selector + Canvas stacked vertically */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        {/* Cable type selector — normal flow bar at top */}
+        <CableTypeSelector selected={selectedCableType} onChange={setSelectedCableType} />
 
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChangeSync}
-          onEdgesChange={onEdgesChangeSync}
-          onConnect={onConnect}
-          onInit={setRfInstance}
+        {/* ReactFlow canvas — takes all remaining height */}
+        <div
+          ref={reactFlowWrapper}
+          style={{ flex: 1, minHeight: 0 }}
           onDrop={onDrop}
           onDragOver={onDragOver}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          snapToGrid
-          snapGrid={[GRID_SIZE, GRID_SIZE]}
-          defaultEdgeOptions={{ type: 'cable' }}
-          fitView
-          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
-          onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
-          onPaneClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
-          style={{ background: '#0f0f0f' }}
-          deleteKeyCode="Delete"
-          multiSelectionKeyCode="Shift"
-          proOptions={{ hideAttribution: true }}
         >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={GRID_SIZE}
-            size={1}
-            color="#2a2a2a"
-          />
-          <Controls
-            style={{
-              background: '#1a1a1a', border: '1px solid #333',
-              borderRadius: 6, overflow: 'hidden',
-            }}
-          />
-          <MiniMap
-            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6 }}
-            nodeColor={(n) => (n.data as unknown as HardwareBlockData).color ?? '#555'}
-            maskColor="rgba(0,0,0,0.7)"
-          />
-        </ReactFlow>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={onConnect}
+            onInit={setRfInstance}
+            onNodeDragStop={onNodeDragStop}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            snapToGrid
+            snapGrid={[GRID_SIZE, GRID_SIZE]}
+            defaultEdgeOptions={{ type: 'cable' }}
+            fitView
+            onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
+            onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
+            onPaneClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
+            style={{ width: '100%', height: '100%', background: '#0f0f0f' }}
+            deleteKeyCode="Delete"
+            multiSelectionKeyCode="Shift"
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={GRID_SIZE} size={1} color="#2a2a2a" />
+            <Controls style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, overflow: 'hidden' }} />
+            <MiniMap
+              style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6 }}
+              nodeColor={(n) => (n.data as unknown as HardwareBlockData).color ?? '#555'}
+              maskColor="rgba(0,0,0,0.7)"
+            />
+          </ReactFlow>
+        </div>
       </div>
 
       {/* Right: Technical List */}
       <div style={{
-        width: 220, flexShrink: 0, padding: 12,
+        width: 220, flexShrink: 0,
         background: '#111', borderLeft: '1px solid #222',
-        overflowY: 'auto',
+        overflowY: 'auto', padding: 12,
       }}>
         <TechnicalList
           zone={zone}

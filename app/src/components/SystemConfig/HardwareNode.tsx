@@ -7,7 +7,8 @@ function HardwareNodeComponent({ id, data, selected }: NodeProps) {
   const [hovered, setHovered] = useState(false);
   const { deleteElements } = useReactFlow();
 
-  const handleSize = 8;
+  const handleSize = 10;
+  const show = hovered || selected;
 
   return (
     <div
@@ -21,6 +22,7 @@ function HardwareNodeComponent({ id, data, selected }: NodeProps) {
         position: 'relative',
         cursor: 'grab',
         boxShadow: selected ? `0 0 0 2px ${d.color}44` : 'none',
+        userSelect: 'none',
       }}
     >
       {/* Color bar top */}
@@ -49,12 +51,13 @@ function HardwareNodeComponent({ id, data, selected }: NodeProps) {
         background: d.responsibility === 'imfine' ? '#FF6B6B33' : '#51CF6633',
         color: d.responsibility === 'imfine' ? '#FF6B6B' : '#51CF66',
         fontWeight: 600, letterSpacing: 0.3,
+        pointerEvents: 'none',
       }}>
         {d.responsibility === 'imfine' ? 'IMF' : 'LOCAL'}
       </div>
 
       {/* Delete button */}
-      {(hovered || selected) && (
+      {show && (
         <button
           onClick={(e) => { e.stopPropagation(); deleteElements({ nodes: [{ id }] }); }}
           style={{
@@ -69,17 +72,19 @@ function HardwareNodeComponent({ id, data, selected }: NodeProps) {
         >×</button>
       )}
 
-      {/* Handles — all 4 sides */}
+      {/* Handles — all 4 sides, source + target */}
       {[Position.Top, Position.Right, Position.Bottom, Position.Left].map((pos) => (
         <Handle
-          key={pos}
+          key={`${pos}-src`}
           type="source"
           position={pos}
           id={`${pos}-src`}
           style={{
             width: handleSize, height: handleSize,
             background: d.color, border: '2px solid #0f0f0f',
-            borderRadius: '50%', opacity: hovered || selected ? 1 : 0,
+            borderRadius: '50%',
+            opacity: show ? 1 : 0,
+            pointerEvents: show ? 'all' : 'none',
             transition: 'opacity 0.15s',
           }}
         />
@@ -93,7 +98,9 @@ function HardwareNodeComponent({ id, data, selected }: NodeProps) {
           style={{
             width: handleSize, height: handleSize,
             background: '#555', border: '2px solid #0f0f0f',
-            borderRadius: '50%', opacity: hovered || selected ? 1 : 0,
+            borderRadius: '50%',
+            opacity: show ? 1 : 0,
+            pointerEvents: show ? 'all' : 'none',
             transition: 'opacity 0.15s',
           }}
         />

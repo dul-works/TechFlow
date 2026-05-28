@@ -6,19 +6,21 @@ import { MARKER_LABELS } from '../../data/defaultHardware';
 
 interface Props { zoneId: string }
 
-const MARKER_ICONS: Record<MarkerType, string> = {
+const MARKER_ICONS: Record<string, string> = {
   '220v': '⚡',
   'internet': '🌐',
   'powerstrip': '🔌',
   'usb_repeater': '🔗',
 };
 
-const MARKER_COLORS: Record<MarkerType, string> = {
+const MARKER_COLORS: Record<string, string> = {
   '220v': '#FFD43B',
   'internet': '#74C0FC',
   'powerstrip': '#A9E34B',
   'usb_repeater': '#FFA94D',
 };
+
+const ACTIVE_MARKER_TYPES = ['220v', 'internet'] as MarkerType[];
 
 export default function ElecNetworkEditor({ zoneId }: Props) {
   const store = useProjectStore();
@@ -91,7 +93,7 @@ export default function ElecNetworkEditor({ zoneId }: Props) {
 
         <div style={{ borderTop: '1px solid #222', paddingTop: 10, marginTop: 4 }}>
           <div style={{ fontSize: 10, color: '#555', marginBottom: 8, fontWeight: 600 }}>ADD MARKERS</div>
-          {(['220v', 'internet', 'powerstrip', 'usb_repeater'] as MarkerType[]).map((type) => (
+          {ACTIVE_MARKER_TYPES.map((type) => (
             <button
               key={type}
               onClick={() => setAddingMarker((a) => a === type ? null : type)}
@@ -138,7 +140,7 @@ export default function ElecNetworkEditor({ zoneId }: Props) {
         {/* Legend */}
         <div style={{ borderTop: '1px solid #222', paddingTop: 10 }}>
           <div style={{ fontSize: 10, color: '#555', marginBottom: 6, fontWeight: 600 }}>TECHNICAL LIST</div>
-          {(['220v', 'internet', 'powerstrip', 'usb_repeater'] as MarkerType[]).map((type) => {
+          {ACTIVE_MARKER_TYPES.map((type) => {
             const count = zone.floorMarkers.filter((m) => m.type === type).length;
             if (count === 0) return null;
             return (
