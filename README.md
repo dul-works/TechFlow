@@ -23,6 +23,24 @@ npx vite --port 5173
 - **PPT 내보내기** — PowerPoint에서 직접 편집 가능한 형태로 출력
 - **JSON 저장/불러오기** — 프로젝트 재편집 지원
 
+## 배포 (Cloudflare Pages)
+
+### 대시보드 배포
+Cloudflare Pages 대시보드에서 GitHub 연결 후 아래 설정:
+
+| 항목 | 값 |
+|------|-----|
+| Root directory | `app` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+
+### CLI 배포
+```bash
+cd app
+npm run build
+npx wrangler pages deploy dist
+```
+
 ## 폰트 설치
 
 PPT 출력에 Samsung SS Head KR / Samsung SS Body KR 폰트가 사용됩니다.  
