@@ -77,6 +77,13 @@ export interface HardwareTemplate {
   defaultResponsibility: Responsibility;
 }
 
+export interface CableType {
+  id: string;
+  name: string;
+  color: string;
+  dashed?: boolean;
+}
+
 export type PageType =
   | 'cover'
   | 'system_config'

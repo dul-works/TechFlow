@@ -1,27 +1,48 @@
 import { useState } from 'react';
-import { DEFAULT_HARDWARE } from '../../data/defaultHardware';
+import { useProjectStore } from '../../store/projectStore';
+import { getNextColor } from '../../data/defaultHardware';
 import type { HardwareTemplate } from '../../types';
 
 interface Props {
   onAddHardware: (template: HardwareTemplate) => void;
 }
 
-const CATEGORIES = ['All', 'Display', 'PC', 'Network', 'Controller', 'Tablet', 'Audio', 'Sensor', 'Peripheral', 'Server'];
+const CATEGORIES = ['All', 'Display', 'PC', 'Network', 'Device', 'Controller', 'Tablet', 'Audio', 'Sensor', 'Peripheral', 'Server'];
 
 export default function HardwarePalette({ onAddHardware }: Props) {
+  const store = useProjectStore();
+  const hardwareTemplates = store.hardwareTemplates;
+
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customModel, setCustomModel] = useState('');
   const [customCat, setCustomCat] = useState('Display');
+  const [customResp, setCustomResp] = useState<'imfine' | 'local'>('imfine');
 
-  const filtered = DEFAULT_HARDWARE.filter((h) => {
+  const filtered = hardwareTemplates.filter((h) => {
     const matchCat = category === 'All' || h.category === category;
     const matchSearch = h.name.toLowerCase().includes(search.toLowerCase()) ||
       h.model.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
+
+  const handleAddCustom = () => {
+    if (!customName.trim()) return;
+    const newTemplate: HardwareTemplate = {
+      id: `custom_${Date.now()}`,
+      name: customName.trim(),
+      model: customModel.trim(),
+      category: customCat,
+      defaultColor: getNextColor(),
+      defaultResponsibility: customResp,
+    };
+    store.addHardwareTemplate(newTemplate);
+    setCustomName('');
+    setCustomModel('');
+    setShowCustomForm(false);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8 }}>
@@ -67,7 +88,7 @@ export default function HardwarePalette({ onAddHardware }: Props) {
             onClick={() => onAddHardware(hw)}
             draggable
             onDragStart={(e) => e.dataTransfer.setData('hardwareTemplate', JSON.stringify(hw))}
-            title={`${hw.name} — ${hw.model}`}
+            title={hw.model ? `${hw.name} — ${hw.model}` : hw.name}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               background: '#111', border: '1px solid #2a2a2a',
@@ -84,9 +105,11 @@ export default function HardwarePalette({ onAddHardware }: Props) {
               <div style={{ fontSize: 12, color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {hw.name}
               </div>
-              <div style={{ fontSize: 10, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {hw.model}
-              </div>
+              {hw.model && (
+                <div style={{ fontSize: 10, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {hw.model}
+                </div>
+              )}
             </div>
             <div style={{
               fontSize: 9, color: hw.defaultResponsibility === 'imfine' ? '#FF6B6B' : '#51CF66',
@@ -98,39 +121,46 @@ export default function HardwarePalette({ onAddHardware }: Props) {
         ))}
       </div>
 
-      {/* Custom hardware */}
+      {/* Add custom hardware */}
       <div style={{ borderTop: '1px solid #222', paddingTop: 8 }}>
         {showCustomForm ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <input value={customName} onChange={(e) => setCustomName(e.target.value)}
+            <input
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
               placeholder="Hardware name *"
-              style={{ background: '#111', border: '1px solid #333', borderRadius: 4, color: '#fff', padding: '4px 8px', fontSize: 11, outline: 'none', fontFamily: 'inherit' }} />
-            <input value={customModel} onChange={(e) => setCustomModel(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              value={customModel}
+              onChange={(e) => setCustomModel(e.target.value)}
               placeholder="Model name"
-              style={{ background: '#111', border: '1px solid #333', borderRadius: 4, color: '#fff', padding: '4px 8px', fontSize: 11, outline: 'none', fontFamily: 'inherit' }} />
-            <select value={customCat} onChange={(e) => setCustomCat(e.target.value)}
-              style={{ background: '#111', border: '1px solid #333', borderRadius: 4, color: '#fff', padding: '4px 8px', fontSize: 11, outline: 'none', fontFamily: 'inherit' }}>
-              {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+              style={inputStyle}
+            />
+            <select
+              value={customCat}
+              onChange={(e) => setCustomCat(e.target.value)}
+              style={inputStyle}
+            >
+              {CATEGORIES.filter((c) => c !== 'All').map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <select
+              value={customResp}
+              onChange={(e) => setCustomResp(e.target.value as 'imfine' | 'local')}
+              style={inputStyle}
+            >
+              <option value="imfine">I M FINE</option>
+              <option value="local">Local</option>
             </select>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
-                onClick={() => {
-                  if (!customName.trim()) return;
-                  onAddHardware({
-                    id: `custom_${Date.now()}`,
-                    name: customName.trim(),
-                    model: customModel.trim(),
-                    category: customCat,
-                    defaultResponsibility: 'imfine',
-                  });
-                  setCustomName(''); setCustomModel(''); setShowCustomForm(false);
-                }}
+                onClick={handleAddCustom}
                 style={{
                   flex: 1, background: '#ffffff', color: '#000', border: 'none',
                   borderRadius: 4, padding: '5px', fontSize: 11, cursor: 'pointer',
                   fontWeight: 700, fontFamily: 'inherit',
                 }}
-              >Add</button>
+              >Add to List</button>
               <button
                 onClick={() => setShowCustomForm(false)}
                 style={{
@@ -152,9 +182,15 @@ export default function HardwarePalette({ onAddHardware }: Props) {
             }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#555'; e.currentTarget.style.color = '#888'; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = '#555'; }}
-          >+ Custom Hardware</button>
+          >+ Add Hardware</button>
         )}
       </div>
     </div>
   );
 }
+
+const inputStyle: React.CSSProperties = {
+  background: '#111', border: '1px solid #333', borderRadius: 4,
+  color: '#fff', padding: '4px 8px', fontSize: 11, outline: 'none',
+  fontFamily: 'inherit',
+};

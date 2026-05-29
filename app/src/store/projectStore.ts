@@ -1,18 +1,20 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type {
-  Project, Zone, HardwareNode, CableEdge, FloorPlanSettings, FloorMarker, HardwareBlockData
+  Project, Zone, HardwareNode, CableEdge,
+  FloorPlanSettings, FloorMarker, HardwareBlockData,
+  HardwareTemplate, CableType,
 } from '../types';
-import { getNextColor } from '../data/defaultHardware';
+import { DEFAULT_HARDWARE, DEFAULT_CABLE_TYPES, getNextColor } from '../data/defaultHardware';
 
 let nodeCounter = 1;
 let edgeCounter = 1;
 let zoneCounter = 1;
 let markerCounter = 1;
 
-function genNodeId() { return `node_${nodeCounter++}`; }
-function genEdgeId() { return `edge_${edgeCounter++}`; }
-function genZoneId() { return `zone_${zoneCounter++}`; }
+function genNodeId()   { return `node_${nodeCounter++}`; }
+function genEdgeId()   { return `edge_${edgeCounter++}`; }
+function genZoneId()   { return `zone_${zoneCounter++}`; }
 function genMarkerId() { return `marker_${markerCounter++}`; }
 
 function createDefaultZone(name: string): Zone {
@@ -30,59 +32,64 @@ interface ProjectStore {
   project: Project;
   activePage: string;
 
-  // Project
+  // ── 세션 전용 목록 (JSON export/import로 복원) ──────────────
+  hardwareTemplates: HardwareTemplate[];
+  cableTypes: CableType[];
+  addHardwareTemplate: (t: HardwareTemplate) => void;
+  removeHardwareTemplate: (id: string) => void;
+  addCableType: (c: CableType) => void;
+  removeCableType: (id: string) => void;
+
+  // ── Project ──────────────────────────────────────────────────
   setProjectName: (name: string) => void;
   setProjectDate: (date: string) => void;
 
-  // Zones
+  // ── Zones ────────────────────────────────────────────────────
   addZone: (name: string) => void;
   removeZone: (zoneId: string) => void;
   renameZone: (zoneId: string, name: string) => void;
   setActiveZone: (zoneId: string) => void;
   activeZone: () => Zone | undefined;
 
-  // Page navigation
   setActivePage: (page: string) => void;
 
-  // Nodes
+  // ── Nodes ────────────────────────────────────────────────────
   addNode: (zoneId: string, node: Omit<HardwareNode, 'id'>) => string;
   updateNode: (zoneId: string, nodeId: string, data: Partial<HardwareBlockData>) => void;
   updateNodePosition: (zoneId: string, nodeId: string, position: { x: number; y: number }) => void;
   removeNode: (zoneId: string, nodeId: string) => void;
   setNodes: (zoneId: string, nodes: HardwareNode[]) => void;
 
-  // Edges
+  // ── Edges ────────────────────────────────────────────────────
   addEdge: (zoneId: string, edge: Omit<CableEdge, 'id'>) => string;
   updateEdge: (zoneId: string, edgeId: string, data: Partial<CableEdge['data']>) => void;
   removeEdge: (zoneId: string, edgeId: string) => void;
   setEdges: (zoneId: string, edges: CableEdge[]) => void;
 
-  // Floor plan
+  // ── Floor plan ───────────────────────────────────────────────
   setFloorPlan: (zoneId: string, settings: FloorPlanSettings) => void;
   clearFloorPlan: (zoneId: string) => void;
   updateFloorPlan: (zoneId: string, partial: Partial<FloorPlanSettings>) => void;
 
-  // Floor markers (E&N)
+  // ── Floor markers (E&N) ──────────────────────────────────────
   addMarker: (zoneId: string, marker: Omit<FloorMarker, 'id'>) => void;
   removeMarker: (zoneId: string, markerId: string) => void;
   updateMarker: (zoneId: string, markerId: string, partial: Partial<FloorMarker>) => void;
 
-  // Cable guide node positions
+  // ── Cable Guide 위치 ─────────────────────────────────────────
   setCableGuideNodePosition: (zoneId: string, nodeId: string, pos: { x: number; y: number }) => void;
 
-  // Hardware color management
+  // ── 색상 ─────────────────────────────────────────────────────
   colorMap: Record<string, string>;
   setNodeColor: (nodeId: string, color: string) => void;
 
-  // Export / Import
+  // ── Export / Import ──────────────────────────────────────────
   exportJSON: () => string;
   importJSON: (json: string) => void;
 }
 
 function getOrCreateColor(colorMap: Record<string, string>, id: string): string {
-  if (!colorMap[id]) {
-    colorMap[id] = getNextColor();
-  }
+  if (!colorMap[id]) colorMap[id] = getNextColor();
   return colorMap[id];
 }
 
@@ -90,6 +97,10 @@ export const useProjectStore = create<ProjectStore>()(
   subscribeWithSelector((set, get) => ({
     activePage: 'cover',
     colorMap: {},
+
+    // 세션 전용 목록 (기본값으로 초기화)
+    hardwareTemplates: [...DEFAULT_HARDWARE],
+    cableTypes: [...DEFAULT_CABLE_TYPES],
 
     project: {
       id: 'proj_1',
@@ -99,12 +110,28 @@ export const useProjectStore = create<ProjectStore>()(
       activeZoneId: 'zone_1',
     },
 
+    // ── 하드웨어 템플릿 관리 ────────────────────────────────────
+    addHardwareTemplate: (t) =>
+      set((s) => ({ hardwareTemplates: [...s.hardwareTemplates, t] })),
+
+    removeHardwareTemplate: (id) =>
+      set((s) => ({ hardwareTemplates: s.hardwareTemplates.filter((t) => t.id !== id) })),
+
+    // ── 케이블 타입 관리 ────────────────────────────────────────
+    addCableType: (c) =>
+      set((s) => ({ cableTypes: [...s.cableTypes, c] })),
+
+    removeCableType: (id) =>
+      set((s) => ({ cableTypes: s.cableTypes.filter((c) => c.id !== id) })),
+
+    // ── Project ──────────────────────────────────────────────────
     setProjectName: (name) =>
       set((s) => ({ project: { ...s.project, name } })),
 
     setProjectDate: (date) =>
       set((s) => ({ project: { ...s.project, date } })),
 
+    // ── Zones ────────────────────────────────────────────────────
     addZone: (name) => {
       const zone = createDefaultZone(name);
       set((s) => ({
@@ -132,9 +159,7 @@ export const useProjectStore = create<ProjectStore>()(
       set((s) => ({
         project: {
           ...s.project,
-          zones: s.project.zones.map((z) =>
-            z.id === zoneId ? { ...z, name } : z
-          ),
+          zones: s.project.zones.map((z) => z.id === zoneId ? { ...z, name } : z),
         },
       })),
 
@@ -148,6 +173,7 @@ export const useProjectStore = create<ProjectStore>()(
 
     setActivePage: (page) => set({ activePage: page }),
 
+    // ── Nodes ────────────────────────────────────────────────────
     addNode: (zoneId, nodeData) => {
       const id = genNodeId();
       const colorMap = { ...get().colorMap };
@@ -172,12 +198,7 @@ export const useProjectStore = create<ProjectStore>()(
           ...s.project,
           zones: s.project.zones.map((z) =>
             z.id === zoneId
-              ? {
-                  ...z,
-                  nodes: z.nodes.map((n) =>
-                    n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
-                  ),
-                }
+              ? { ...z, nodes: z.nodes.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n) }
               : z
           ),
         },
@@ -189,7 +210,7 @@ export const useProjectStore = create<ProjectStore>()(
           ...s.project,
           zones: s.project.zones.map((z) =>
             z.id === zoneId
-              ? { ...z, nodes: z.nodes.map((n) => (n.id === nodeId ? { ...n, position } : n)) }
+              ? { ...z, nodes: z.nodes.map((n) => n.id === nodeId ? { ...n, position } : n) }
               : z
           ),
         },
@@ -215,10 +236,11 @@ export const useProjectStore = create<ProjectStore>()(
       set((s) => ({
         project: {
           ...s.project,
-          zones: s.project.zones.map((z) => (z.id === zoneId ? { ...z, nodes } : z)),
+          zones: s.project.zones.map((z) => z.id === zoneId ? { ...z, nodes } : z),
         },
       })),
 
+    // ── Edges ────────────────────────────────────────────────────
     addEdge: (zoneId, edgeData) => {
       const id = genEdgeId();
       const edge: CableEdge = { id, ...edgeData };
@@ -239,12 +261,7 @@ export const useProjectStore = create<ProjectStore>()(
           ...s.project,
           zones: s.project.zones.map((z) =>
             z.id === zoneId
-              ? {
-                  ...z,
-                  edges: z.edges.map((e) =>
-                    e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e
-                  ),
-                }
+              ? { ...z, edges: z.edges.map((e) => e.id === edgeId ? { ...e, data: { ...e.data, ...data } } : e) }
               : z
           ),
         },
@@ -264,17 +281,16 @@ export const useProjectStore = create<ProjectStore>()(
       set((s) => ({
         project: {
           ...s.project,
-          zones: s.project.zones.map((z) => (z.id === zoneId ? { ...z, edges } : z)),
+          zones: s.project.zones.map((z) => z.id === zoneId ? { ...z, edges } : z),
         },
       })),
 
+    // ── Floor plan ───────────────────────────────────────────────
     setFloorPlan: (zoneId, settings) =>
       set((s) => ({
         project: {
           ...s.project,
-          zones: s.project.zones.map((z) =>
-            z.id === zoneId ? { ...z, floorPlan: settings } : z
-          ),
+          zones: s.project.zones.map((z) => z.id === zoneId ? { ...z, floorPlan: settings } : z),
         },
       })),
 
@@ -282,9 +298,7 @@ export const useProjectStore = create<ProjectStore>()(
       set((s) => ({
         project: {
           ...s.project,
-          zones: s.project.zones.map((z) =>
-            z.id === zoneId ? { ...z, floorPlan: undefined } : z
-          ),
+          zones: s.project.zones.map((z) => z.id === zoneId ? { ...z, floorPlan: undefined } : z),
         },
       })),
 
@@ -293,13 +307,12 @@ export const useProjectStore = create<ProjectStore>()(
         project: {
           ...s.project,
           zones: s.project.zones.map((z) =>
-            z.id === zoneId && z.floorPlan
-              ? { ...z, floorPlan: { ...z.floorPlan, ...partial } }
-              : z
+            z.id === zoneId && z.floorPlan ? { ...z, floorPlan: { ...z.floorPlan, ...partial } } : z
           ),
         },
       })),
 
+    // ── Floor markers ────────────────────────────────────────────
     addMarker: (zoneId, markerData) => {
       const marker: FloorMarker = { id: genMarkerId(), ...markerData };
       set((s) => ({
@@ -330,32 +343,26 @@ export const useProjectStore = create<ProjectStore>()(
           ...s.project,
           zones: s.project.zones.map((z) =>
             z.id === zoneId
-              ? {
-                  ...z,
-                  floorMarkers: z.floorMarkers.map((m) =>
-                    m.id === markerId ? { ...m, ...partial } : m
-                  ),
-                }
+              ? { ...z, floorMarkers: z.floorMarkers.map((m) => m.id === markerId ? { ...m, ...partial } : m) }
               : z
           ),
         },
       })),
 
+    // ── Cable Guide 위치 ─────────────────────────────────────────
     setCableGuideNodePosition: (zoneId, nodeId, pos) =>
       set((s) => ({
         project: {
           ...s.project,
           zones: s.project.zones.map((z) =>
             z.id === zoneId
-              ? {
-                  ...z,
-                  cableGuideNodePositions: { ...z.cableGuideNodePositions, [nodeId]: pos },
-                }
+              ? { ...z, cableGuideNodePositions: { ...z.cableGuideNodePositions, [nodeId]: pos } }
               : z
           ),
         },
       })),
 
+    // ── 색상 ─────────────────────────────────────────────────────
     setNodeColor: (nodeId, color) =>
       set((s) => ({
         colorMap: { ...s.colorMap, [nodeId]: color },
@@ -363,23 +370,29 @@ export const useProjectStore = create<ProjectStore>()(
           ...s.project,
           zones: s.project.zones.map((z) => ({
             ...z,
-            nodes: z.nodes.map((n) =>
-              n.id === nodeId ? { ...n, data: { ...n.data, color } } : n
-            ),
+            nodes: z.nodes.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, color } } : n),
           })),
         },
       })),
 
+    // ── Export / Import ──────────────────────────────────────────
     exportJSON: () => {
-      const { project, colorMap } = get();
-      return JSON.stringify({ project, colorMap }, null, 2);
+      const { project, colorMap, hardwareTemplates, cableTypes } = get();
+      // hardwareTemplates, cableTypes 포함해서 저장 → 불러올 때 복원
+      return JSON.stringify({ project, colorMap, hardwareTemplates, cableTypes }, null, 2);
     },
 
     importJSON: (json) => {
       try {
         const parsed = JSON.parse(json);
         if (parsed.project) {
-          set({ project: parsed.project, colorMap: parsed.colorMap || {} });
+          set({
+            project: parsed.project,
+            colorMap: parsed.colorMap || {},
+            // JSON에 저장된 목록이 있으면 복원, 없으면 기본값 (하위 호환)
+            hardwareTemplates: parsed.hardwareTemplates ?? [...DEFAULT_HARDWARE],
+            cableTypes: parsed.cableTypes ?? [...DEFAULT_CABLE_TYPES],
+          });
         }
       } catch (e) {
         console.error('Failed to import JSON', e);

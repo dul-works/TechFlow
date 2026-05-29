@@ -13,7 +13,7 @@ import TechnicalList from './TechnicalList';
 import CableTypeSelector from './CableTypeSelector';
 import type { HardwareNode, CableEdge, HardwareBlockData } from '../../types';
 import type { HardwareTemplate } from '../../types';
-import { CABLE_TYPES, getNextColor } from '../../data/defaultHardware';
+import { getNextColor } from '../../data/defaultHardware';
 import { useProjectStore } from '../../store/projectStore';
 
 const nodeTypes = { hardware: HardwareNodeComponent };
@@ -74,7 +74,7 @@ export default function SystemConfigEditor({ zoneId }: Props) {
     store.setEdges(zoneId, cableEdges);
   }, [zoneId, store]);
 
-  const [selectedCableType, setSelectedCableType] = useState(CABLE_TYPES[0]);
+  const [selectedCableType, setSelectedCableType] = useState(store.cableTypes[0]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 

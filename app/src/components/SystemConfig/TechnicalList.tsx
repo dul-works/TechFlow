@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { HexColorPicker } from 'react-colorful';
 import type { Zone } from '../../types';
-import { CABLE_TYPES } from '../../data/defaultHardware';
 import { useProjectStore } from '../../store/projectStore';
 
 interface Props {
@@ -181,7 +180,7 @@ function NodeEditor({ node, zoneId }: { node: Zone['nodes'][0]; zoneId: string }
 }
 
 function EdgeEditor({ edge, zoneId }: { edge: Zone['edges'][0]; zoneId: string }) {
-  const { updateEdge } = useProjectStore();
+  const { updateEdge, cableTypes } = useProjectStore();
   const [color, setColor] = useState(edge.data.color);
 
   return (
@@ -189,11 +188,11 @@ function EdgeEditor({ edge, zoneId }: { edge: Zone['edges'][0]; zoneId: string }
       <label style={{ fontSize: 10, color: '#555' }}>Cable Type</label>
       <select value={edge.data.type}
         onChange={(e) => {
-          const found = CABLE_TYPES.find(c => c.name === e.target.value);
+          const found = cableTypes.find(c => c.name === e.target.value);
           updateEdge(zoneId, edge.id, { type: e.target.value, color: found?.color ?? edge.data.color });
         }}
         style={{ ...inputStyle, cursor: 'pointer' }}>
-        {CABLE_TYPES.map((c) => <option key={c.id}>{c.name}</option>)}
+        {cableTypes.map((c) => <option key={c.id}>{c.name}</option>)}
       </select>
       <label style={{ fontSize: 10, color: '#555' }}>Color</label>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
